@@ -257,6 +257,68 @@ func (r *joinRepository) getIDs(ctx context.Context, id int) ([]int, error) {
 	return r.runIdsQuery(ctx, query, []interface{}{id})
 }
 
+type joinIDRow struct {
+	SrcID int `db:"src_id"`
+	ID    int `db:"id"`
+}
+
+// getManyIDs is the batched equivalent of getIDs: it resolves the joined IDs for
+// every id in a single query, returning a slice aligned to the input order.
+// Ordering within each group is preserved, since the ORDER BY applies globally.
+func (r *joinRepository) getManyIDs(ctx context.Context, ids []int) ([][]int, error) {
+	ret := make([][]int, len(ids))
+	for i := range ret {
+		// match getIDs, which returns an empty non-nil slice when there are no
+		// related IDs; a nil slice means "not loaded" to models.RelatedIDs
+		ret[i] = []int{}
+	}
+
+	if len(ids) == 0 {
+		return ret, nil
+	}
+
+	var joinStr string
+	if r.foreignTable != "" {
+		joinStr = fmt.Sprintf(" INNER JOIN %s ON %[1]s.id = %s.%s", r.foreignTable, r.tableName, r.fkColumn)
+	}
+
+	query := fmt.Sprintf(`SELECT %[1]s.%[2]s as src_id, %[1]s.%[3]s as id from %[1]s%[4]s WHERE %[1]s.%[2]s IN %[5]s`,
+		r.tableName, r.idColumn, r.fkColumn, joinStr, getInBinding(len(ids)))
+
+	if r.orderBy != "" {
+		query += " ORDER BY " + r.orderBy
+	}
+
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+
+	// map to every matching position rather than a single one, so that a
+	// repeated id in the input gets its results in each of its slots
+	idToIndexes := make(map[int][]int, len(ids))
+	for i, id := range ids {
+		idToIndexes[id] = append(idToIndexes[id], i)
+	}
+
+	if err := r.queryFunc(ctx, query, args, false, func(rows *sqlx.Rows) error {
+		var row joinIDRow
+		if err := rows.StructScan(&row); err != nil {
+			return err
+		}
+
+		for _, idx := range idToIndexes[row.SrcID] {
+			ret[idx] = append(ret[idx], row.ID)
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+
 func (r *joinRepository) insert(ctx context.Context, id int, foreignIDs ...int) error {
 	stmt, err := dbWrapper.Prepare(ctx, fmt.Sprintf("INSERT INTO %s (%s, %s) VALUES (?, ?)", r.tableName, r.idColumn, r.fkColumn))
 	if err != nil {

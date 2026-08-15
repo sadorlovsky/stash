@@ -1465,6 +1465,18 @@ func (qb *SceneStore) GetGalleryIDs(ctx context.Context, id int) ([]int, error) 
 	return sceneRepository.galleries.getIDs(ctx, id)
 }
 
+func (qb *SceneStore) GetManyPerformerIDs(ctx context.Context, ids []int) ([][]int, error) {
+	return sceneRepository.performers.getManyIDs(ctx, ids)
+}
+
+func (qb *SceneStore) GetManyTagIDs(ctx context.Context, ids []int) ([][]int, error) {
+	return sceneRepository.tags.getManyIDs(ctx, ids)
+}
+
+func (qb *SceneStore) GetManyGalleryIDs(ctx context.Context, ids []int) ([][]int, error) {
+	return sceneRepository.galleries.getManyIDs(ctx, ids)
+}
+
 func (qb *SceneStore) AddGalleryIDs(ctx context.Context, sceneID int, galleryIDs []int) error {
 	return scenesGalleriesTableMgr.addJoins(ctx, sceneID, galleryIDs)
 }

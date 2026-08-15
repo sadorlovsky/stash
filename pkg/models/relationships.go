@@ -35,6 +35,22 @@ type FileIDLoader interface {
 	GetManyFileIDs(ctx context.Context, ids []int) ([][]FileID, error)
 }
 
+// The Batch*IDLoader interfaces are the batched equivalents of the singular
+// loaders above. They exist so that dataloaders can resolve a relationship for
+// a whole page of objects in one query instead of one query per object.
+
+type BatchGalleryIDLoader interface {
+	GetManyGalleryIDs(ctx context.Context, ids []int) ([][]int, error)
+}
+
+type BatchPerformerIDLoader interface {
+	GetManyPerformerIDs(ctx context.Context, ids []int) ([][]int, error)
+}
+
+type BatchTagIDLoader interface {
+	GetManyTagIDs(ctx context.Context, ids []int) ([][]int, error)
+}
+
 type SceneGroupLoader interface {
 	GetGroups(ctx context.Context, id int) ([]GroupsScenes, error)
 }

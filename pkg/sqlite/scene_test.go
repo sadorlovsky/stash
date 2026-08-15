@@ -5578,3 +5578,65 @@ func TestSceneStore_CountUniqueViews(t *testing.T) {
 		return nil
 	})
 }
+
+func TestSceneGetManyRelationIDs(t *testing.T) {
+	withTxn(func(ctx context.Context) error {
+		qb := db.Scene
+
+		// deliberately unordered, with repeats and a scene that has no relations,
+		// to check that results are aligned to the input order rather than to the
+		// order the database happens to return rows in
+		ids := []int{
+			sceneIDs[sceneIdxWithTwoTags],
+			sceneIDs[sceneIdxWithGallery],
+			sceneIDs[sceneIdxWithTag],
+			sceneIDs[sceneIdxWithTwoPerformers],
+			sceneIDs[sceneIdxWithPerformer],
+			sceneIDs[sceneIdxWithTwoTags],
+		}
+
+		cases := []struct {
+			name    string
+			getMany func(context.Context, []int) ([][]int, error)
+			getOne  func(context.Context, int) ([]int, error)
+		}{
+			{"tags", qb.GetManyTagIDs, qb.GetTagIDs},
+			{"performers", qb.GetManyPerformerIDs, qb.GetPerformerIDs},
+			{"galleries", qb.GetManyGalleryIDs, qb.GetGalleryIDs},
+		}
+
+		for _, c := range cases {
+			t.Run(c.name, func(t *testing.T) {
+				many, err := c.getMany(ctx, ids)
+				if err != nil {
+					t.Fatalf("SceneStore.GetMany%s() error = %v", c.name, err)
+				}
+
+				if !assert.Len(t, many, len(ids)) {
+					return
+				}
+
+				// each entry must match what the single-id loader returns
+				for i, id := range ids {
+					single, err := c.getOne(ctx, id)
+					if err != nil {
+						t.Fatalf("single loader error = %v", err)
+					}
+
+					assert.Equal(t, single, many[i], "scene %d (index %d)", id, i)
+				}
+			})
+		}
+
+		// empty input must not query and must return an empty result
+		for _, c := range cases {
+			many, err := c.getMany(ctx, nil)
+			if err != nil {
+				t.Errorf("GetMany%s(nil) error = %v", c.name, err)
+			}
+			assert.Empty(t, many)
+		}
+
+		return nil
+	})
+}

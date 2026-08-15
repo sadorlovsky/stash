@@ -13,6 +13,7 @@
 //go:generate go run github.com/vektah/dataloaden FolderLoader github.com/stashapp/stash/pkg/models.FolderID *github.com/stashapp/stash/pkg/models.Folder
 //go:generate go run github.com/vektah/dataloaden FolderRelatedFolderIDsLoader github.com/stashapp/stash/pkg/models.FolderID []github.com/stashapp/stash/pkg/models.FolderID
 //go:generate go run github.com/vektah/dataloaden RelatedFileIDsLoader int []github.com/stashapp/stash/pkg/models.FileID
+//go:generate go run github.com/vektah/dataloaden RelatedIDsLoader int []int
 //go:generate go run github.com/vektah/dataloaden FileIDsRelatedIDsLoader github.com/stashapp/stash/pkg/models.FileID []int
 //go:generate go run github.com/vektah/dataloaden CustomFieldsLoader int github.com/stashapp/stash/pkg/models.CustomFieldMap
 //go:generate go run github.com/vektah/dataloaden SceneOCountLoader int int
@@ -51,6 +52,9 @@ type Loaders struct {
 	SceneOHistory     *SceneOHistoryLoader
 	SceneLastPlayed   *SceneLastPlayedLoader
 	SceneCustomFields *CustomFieldsLoader
+	SceneTagIDs       *RelatedIDsLoader
+	ScenePerformerIDs *RelatedIDsLoader
+	SceneGalleryIDs   *RelatedIDsLoader
 
 	ImageFiles   *RelatedFileIDsLoader
 	GalleryFiles *RelatedFileIDsLoader
@@ -233,6 +237,21 @@ func (m Middleware) Middleware(next http.Handler) http.Handler {
 				wait:     wait,
 				maxBatch: maxBatch,
 				fetch:    m.fetchScenesOHistory(ctx),
+			},
+			SceneTagIDs: &RelatedIDsLoader{
+				wait:     wait,
+				maxBatch: maxBatch,
+				fetch:    m.fetchScenesTagIDs(ctx),
+			},
+			ScenePerformerIDs: &RelatedIDsLoader{
+				wait:     wait,
+				maxBatch: maxBatch,
+				fetch:    m.fetchScenesPerformerIDs(ctx),
+			},
+			SceneGalleryIDs: &RelatedIDsLoader{
+				wait:     wait,
+				maxBatch: maxBatch,
+				fetch:    m.fetchScenesGalleryIDs(ctx),
 			},
 		}
 
@@ -499,6 +518,39 @@ func (m Middleware) fetchScenesFileIDs(ctx context.Context) func(keys []int) ([]
 		err := m.Repository.WithDB(ctx, func(ctx context.Context) error {
 			var err error
 			ret, err = m.Repository.Scene.GetManyFileIDs(ctx, keys)
+			return err
+		})
+		return ret, toErrorSlice(err)
+	}
+}
+
+func (m Middleware) fetchScenesTagIDs(ctx context.Context) func(keys []int) ([][]int, []error) {
+	return func(keys []int) (ret [][]int, errs []error) {
+		err := m.Repository.WithDB(ctx, func(ctx context.Context) error {
+			var err error
+			ret, err = m.Repository.Scene.GetManyTagIDs(ctx, keys)
+			return err
+		})
+		return ret, toErrorSlice(err)
+	}
+}
+
+func (m Middleware) fetchScenesPerformerIDs(ctx context.Context) func(keys []int) ([][]int, []error) {
+	return func(keys []int) (ret [][]int, errs []error) {
+		err := m.Repository.WithDB(ctx, func(ctx context.Context) error {
+			var err error
+			ret, err = m.Repository.Scene.GetManyPerformerIDs(ctx, keys)
+			return err
+		})
+		return ret, toErrorSlice(err)
+	}
+}
+
+func (m Middleware) fetchScenesGalleryIDs(ctx context.Context) func(keys []int) ([][]int, []error) {
+	return func(keys []int) (ret [][]int, errs []error) {
+		err := m.Repository.WithDB(ctx, func(ctx context.Context) error {
+			var err error
+			ret, err = m.Repository.Scene.GetManyGalleryIDs(ctx, keys)
 			return err
 		})
 		return ret, toErrorSlice(err)

@@ -105,6 +105,7 @@ type SceneReader interface {
 	BatchGalleryIDLoader
 	BatchPerformerIDLoader
 	BatchTagIDLoader
+	BatchStashIDLoader
 	SceneGroupLoader
 	StashIDLoader
 	VideoFileLoader

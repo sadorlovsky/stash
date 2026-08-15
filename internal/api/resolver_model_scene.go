@@ -296,13 +296,14 @@ func (r *sceneResolver) Performers(ctx context.Context, obj *models.Scene) (ret 
 }
 
 func (r *sceneResolver) StashIds(ctx context.Context, obj *models.Scene) (ret []*models.StashID, err error) {
-	if err := r.withReadTxn(ctx, func(ctx context.Context) error {
-		return obj.LoadStashIDs(ctx, r.repository.Scene)
-	}); err != nil {
+	var stashIDs []models.StashID
+	if obj.StashIDs.Loaded() {
+		stashIDs = obj.StashIDs.List()
+	} else if stashIDs, err = loaders.From(ctx).SceneStashIDs.Load(obj.ID); err != nil {
 		return nil, err
 	}
 
-	return stashIDsSliceToPtrSlice(obj.StashIDs.List()), nil
+	return stashIDsSliceToPtrSlice(stashIDs), nil
 }
 
 func (r *sceneResolver) SceneStreams(ctx context.Context, obj *models.Scene) ([]*manager.SceneStreamEndpoint, error) {

@@ -14,6 +14,7 @@
 //go:generate go run github.com/vektah/dataloaden FolderRelatedFolderIDsLoader github.com/stashapp/stash/pkg/models.FolderID []github.com/stashapp/stash/pkg/models.FolderID
 //go:generate go run github.com/vektah/dataloaden RelatedFileIDsLoader int []github.com/stashapp/stash/pkg/models.FileID
 //go:generate go run github.com/vektah/dataloaden RelatedIDsLoader int []int
+//go:generate go run github.com/vektah/dataloaden RelatedStashIDsLoader int []github.com/stashapp/stash/pkg/models.StashID
 //go:generate go run github.com/vektah/dataloaden FileIDsRelatedIDsLoader github.com/stashapp/stash/pkg/models.FileID []int
 //go:generate go run github.com/vektah/dataloaden CustomFieldsLoader int github.com/stashapp/stash/pkg/models.CustomFieldMap
 //go:generate go run github.com/vektah/dataloaden SceneOCountLoader int int
@@ -55,6 +56,7 @@ type Loaders struct {
 	SceneTagIDs       *RelatedIDsLoader
 	ScenePerformerIDs *RelatedIDsLoader
 	SceneGalleryIDs   *RelatedIDsLoader
+	SceneStashIDs     *RelatedStashIDsLoader
 
 	ImageFiles   *RelatedFileIDsLoader
 	GalleryFiles *RelatedFileIDsLoader
@@ -252,6 +254,11 @@ func (m Middleware) Middleware(next http.Handler) http.Handler {
 				wait:     wait,
 				maxBatch: maxBatch,
 				fetch:    m.fetchScenesGalleryIDs(ctx),
+			},
+			SceneStashIDs: &RelatedStashIDsLoader{
+				wait:     wait,
+				maxBatch: maxBatch,
+				fetch:    m.fetchScenesStashIDs(ctx),
 			},
 		}
 
@@ -551,6 +558,17 @@ func (m Middleware) fetchScenesGalleryIDs(ctx context.Context) func(keys []int) 
 		err := m.Repository.WithDB(ctx, func(ctx context.Context) error {
 			var err error
 			ret, err = m.Repository.Scene.GetManyGalleryIDs(ctx, keys)
+			return err
+		})
+		return ret, toErrorSlice(err)
+	}
+}
+
+func (m Middleware) fetchScenesStashIDs(ctx context.Context) func(keys []int) ([][]models.StashID, []error) {
+	return func(keys []int) (ret [][]models.StashID, errs []error) {
+		err := m.Repository.WithDB(ctx, func(ctx context.Context) error {
+			var err error
+			ret, err = m.Repository.Scene.GetManyStashIDs(ctx, keys)
 			return err
 		})
 		return ret, toErrorSlice(err)

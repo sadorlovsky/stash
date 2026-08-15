@@ -51,6 +51,10 @@ type BatchTagIDLoader interface {
 	GetManyTagIDs(ctx context.Context, ids []int) ([][]int, error)
 }
 
+type BatchStashIDLoader interface {
+	GetManyStashIDs(ctx context.Context, ids []int) ([][]StashID, error)
+}
+
 type SceneGroupLoader interface {
 	GetGroups(ctx context.Context, id int) ([]GroupsScenes, error)
 }

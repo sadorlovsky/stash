@@ -495,6 +495,56 @@ func (r *stashIDRepository) get(ctx context.Context, id int) ([]models.StashID, 
 	return ret, err
 }
 
+type stashIDManyRow struct {
+	SrcID int `db:"src_id"`
+	stashIDRow
+}
+
+// getMany is the batched equivalent of get: it resolves the stash IDs for every
+// id in a single query, returning a slice aligned to the input order. Entries
+// with no rows are empty non-nil slices, so that a caller wrapping the result in
+// models.NewRelatedStashIDs does not get "not loaded" semantics.
+func (r *stashIDRepository) getMany(ctx context.Context, ids []int) ([][]models.StashID, error) {
+	ret := make([][]models.StashID, len(ids))
+	for i := range ret {
+		ret[i] = []models.StashID{}
+	}
+
+	if len(ids) == 0 {
+		return ret, nil
+	}
+
+	query := fmt.Sprintf("SELECT %[2]s as src_id, stash_id, endpoint, updated_at from %[1]s WHERE %[2]s IN %[3]s",
+		r.tableName, r.idColumn, getInBinding(len(ids)))
+
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		args[i] = id
+	}
+
+	idToIndexes := make(map[int][]int, len(ids))
+	for i, id := range ids {
+		idToIndexes[id] = append(idToIndexes[id], i)
+	}
+
+	if err := r.queryFunc(ctx, query, args, false, func(rows *sqlx.Rows) error {
+		var v stashIDManyRow
+		if err := rows.StructScan(&v); err != nil {
+			return err
+		}
+
+		for _, idx := range idToIndexes[v.SrcID] {
+			ret[idx] = append(ret[idx], v.resolve())
+		}
+
+		return nil
+	}); err != nil {
+		return nil, err
+	}
+
+	return ret, nil
+}
+
 type filesRepository struct {
 	repository
 }

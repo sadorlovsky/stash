@@ -1477,6 +1477,10 @@ func (qb *SceneStore) GetManyGalleryIDs(ctx context.Context, ids []int) ([][]int
 	return sceneRepository.galleries.getManyIDs(ctx, ids)
 }
 
+func (qb *SceneStore) GetManyStashIDs(ctx context.Context, ids []int) ([][]models.StashID, error) {
+	return sceneRepository.stashIDs.getMany(ctx, ids)
+}
+
 func (qb *SceneStore) AddGalleryIDs(ctx context.Context, sceneID int, galleryIDs []int) error {
 	return scenesGalleriesTableMgr.addJoins(ctx, sceneID, galleryIDs)
 }

@@ -5640,3 +5640,44 @@ func TestSceneGetManyRelationIDs(t *testing.T) {
 		return nil
 	})
 }
+
+func TestSceneGetManyStashIDs(t *testing.T) {
+	withTxn(func(ctx context.Context) error {
+		qb := db.Scene
+
+		// unordered, with a repeat, to check alignment to the input order
+		ids := []int{
+			sceneIDs[sceneIdxWithTwoTags],
+			sceneIDs[sceneIdxWithGallery],
+			sceneIDs[sceneIdxWithPerformer],
+			sceneIDs[sceneIdxWithTwoTags],
+		}
+
+		many, err := qb.GetManyStashIDs(ctx, ids)
+		if err != nil {
+			t.Fatalf("SceneStore.GetManyStashIDs() error = %v", err)
+		}
+
+		if !assert.Len(t, many, len(ids)) {
+			return nil
+		}
+
+		for i, id := range ids {
+			single, err := qb.GetStashIDs(ctx, id)
+			if err != nil {
+				t.Fatalf("SceneStore.GetStashIDs() error = %v", err)
+			}
+
+			assert.ElementsMatch(t, single, many[i], "scene %d (index %d)", id, i)
+		}
+
+		// empty input must return an empty result without querying
+		empty, err := qb.GetManyStashIDs(ctx, nil)
+		if err != nil {
+			t.Errorf("GetManyStashIDs(nil) error = %v", err)
+		}
+		assert.Empty(t, empty)
+
+		return nil
+	})
+}
